@@ -1,14 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Internet: AI/laptop communication ke future modules ke liye -->
+    <!-- Internet / future AI + weather data -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Voice input -->
+    <!-- Voice -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- Contact names/numbers read karne ke liye -->
+    <!-- Contacts -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <!-- Phone state / supported call handling -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+
+    <!-- Direct phone calling, where Android permits -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <application
         android:allowBackup="true"

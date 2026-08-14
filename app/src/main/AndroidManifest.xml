@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Internet / future AI + weather data -->
+    <!-- Internet: future AI / weather services -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Voice -->
+    <!-- Voice recognition -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Contacts -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
-    <!-- Phone state / supported call handling -->
+    <!-- Phone / call management -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
-
-    <!-- Direct phone calling, where Android permits -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <application
@@ -22,6 +21,7 @@
         android:label="JARVIS V1"
         android:theme="@style/Theme.Jarvis">
 
+        <!-- Main JARVIS screen -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -32,6 +32,22 @@
             </intent-filter>
 
         </activity>
+
+        <!-- Incoming-call control service -->
+        <service
+            android:name=".CallControlService"
+            android:permission="android.permission.BIND_INCALL_SERVICE"
+            android:exported="true">
+
+            <meta-data
+                android:name="android.telecom.IN_CALL_SERVICE_UI"
+                android:value="true" />
+
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+
+        </service>
 
     </application>
 

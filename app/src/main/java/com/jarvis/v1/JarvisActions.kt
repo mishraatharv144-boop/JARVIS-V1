@@ -13,26 +13,39 @@ class JarvisActions {
             IntentType.CALL -> {
                 if (command.target.isNullOrBlank()) {
                     JarvisCommandResult(
-                        "Kisko call karna hai?"
+                        message = "Kisko call karna hai?"
                     )
                 } else {
                     JarvisCommandResult(
-                        "Theek hai, ${command.target} ko call karne ke liye ready hoon."
+                        message = "Theek hai, ${command.target} ko call karne ke liye ready hoon."
                     )
                 }
             }
 
             IntentType.MESSAGE -> {
                 JarvisCommandResult(
-                    "Message samajh gaya. Bhejne se pehle confirmation lunga.",
+                    message = "Message samajh gaya. Bhejne se pehle confirmation lunga.",
                     needsConfirmation = true
                 )
             }
 
             IntentType.OPEN_APP -> {
                 JarvisCommandResult(
-                    "App open karne ki request samajh gaya."
+                    message = "App open karne ki request samajh gaya."
                 )
             }
 
             IntentType.LAPTOP_COMMAND -> {
+                JarvisCommandResult(
+                    message = "Laptop control disabled hai."
+                )
+            }
+
+            IntentType.GENERAL -> {
+                JarvisCommandResult(
+                    message = "Command ko AI brain ke through process karna hoga."
+                )
+            }
+        }
+    }
+}

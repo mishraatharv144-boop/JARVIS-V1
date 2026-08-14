@@ -35,6 +35,7 @@ import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
@@ -155,7 +156,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     override fun onDestroy() {
 
-        activityScope.coroutineContext.cancel()
+        activityScope.cancel()
 
         tts?.stop()
         tts?.shutdown()

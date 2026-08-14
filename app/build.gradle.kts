@@ -7,20 +7,21 @@ android {
     namespace = "com.jarvis.v1"
     compileSdk = 35
 
-compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
-kotlinOptions {
-    jvmTarget = "17"
-}
     defaultConfig {
         applicationId = "com.jarvis.v1"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
     }
 }
 

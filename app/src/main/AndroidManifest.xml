@@ -2,16 +2,16 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Internet: future AI / weather services -->
+    <!-- Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Voice recognition -->
+    <!-- Voice -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Contacts -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
-    <!-- Phone / call management -->
+    <!-- Phone -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
@@ -21,7 +21,7 @@
         android:label="JARVIS V1"
         android:theme="@style/Theme.Jarvis">
 
-        <!-- Main JARVIS screen -->
+        <!-- Main JARVIS activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -33,7 +33,7 @@
 
         </activity>
 
-        <!-- Incoming-call control service -->
+        <!-- Incoming call service -->
         <service
             android:name=".CallControlService"
             android:permission="android.permission.BIND_INCALL_SERVICE"
@@ -48,6 +48,24 @@
             </intent-filter>
 
         </service>
+
+        <!-- Device administrator for supported phone-lock action -->
+        <receiver
+            android:name=".JarvisDeviceAdminReceiver"
+            android:description="@string/device_admin_description"
+            android:label="JARVIS"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+
+        </receiver>
 
     </application>
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+
+    <string name="app_name">JARVIS V1</string>
+
+    <string name="device_admin_description">
+        JARVIS ko supported phone lock action ke liye device administrator access chahiye.
+    </string>
+
+</resources>

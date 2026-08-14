@@ -3,7 +3,6 @@ package com.jarvis.v1
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
@@ -23,12 +22,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -42,44 +40,28 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
+    private lateinit var brain: JarvisBrain
+    private lateinit var engine: JarvisEngine
+    private lateinit var phoneActions: PhoneActions
+    private lateinit var confirmation: ConfirmationManager
+
     private var tts: TextToSpeech? = null
-    private var replyCallback: ((String) -> Unit)? = null
 
     private val scope =
         CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    private lateinit var brain: JarvisBrain
-    private lateinit var engine: JarvisEngine
-    private lateinit var actions: JarvisActions
-    private lateinit var phoneActions: PhoneActions
-    private lateinit var confirmation: ConfirmationManager
-
-    private val speechLauncher =
-        registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-
-            val text = result.data
-                ?.getStringArrayListExtra(
-                    RecognizerIntent.EXTRA_RESULTS
-                )
-                ?.firstOrNull()
-
-            if (!text.isNullOrBlank()) {
-                processCommand(text)
-            } else {
-                speakAndShow("Mujhe kuch sunai nahi diya.")
-            }
-        }
+    private val messages = mutableStateListOf(
+        "JARVIS: Online. Boliye."
+    )
 
     private val microphonePermission =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { granted ->
             if (granted) {
-                startListeningInternal()
+                startListening()
             } else {
-                speakAndShow(
+                reply(
                     "Microphone permission ke bina main voice command nahi sun sakta."
                 )
             }
@@ -88,41 +70,63 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private val contactsPermission =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission()
-        ) { }
+        ) { granted ->
+            if (!granted) {
+                reply(
+                    "Contacts permission nahi mili."
+                )
+            }
+        }
+
+    private val speechLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+
+            val spokenText =
+                result.data
+                    ?.getStringArrayListExtra(
+                        RecognizerIntent.EXTRA_RESULTS
+                    )
+                    ?.firstOrNull()
+
+            if (!spokenText.isNullOrBlank()) {
+                messages.add("You: $spokenText")
+                processCommand(spokenText)
+            } else {
+                reply("Mujhe kuch sunai nahi diya.")
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        tts = TextToSpeech(this, this)
-
         brain = JarvisBrain(applicationContext)
         engine = JarvisEngine()
-        actions = JarvisActions()
         phoneActions = PhoneActions(applicationContext)
         confirmation = ConfirmationManager()
 
+        tts = TextToSpeech(this, this)
+
         setContent {
             JarvisScreen(
+                messages = messages,
                 onListen = {
-                    startListening()
-                },
-                onReply = {
-                    replyCallback = it
+                    requestMicrophone()
                 }
             )
         }
     }
 
-    private fun startListening() {
+    private fun requestMicrophone() {
 
-        val permission =
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            )
+        val permission = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO
+        )
 
         if (permission == PackageManager.PERMISSION_GRANTED) {
-            startListeningInternal()
+            startListening()
         } else {
             microphonePermission.launch(
                 Manifest.permission.RECORD_AUDIO
@@ -130,7 +134,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun startListeningInternal() {
+    private fun startListening() {
 
         val intent = Intent(
             RecognizerIntent.ACTION_RECOGNIZE_SPEECH
@@ -147,28 +151,26 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             )
 
             putExtra(
-                RecognizerIntent.EXTRA_PROMPT,
-                "Boliye..."
+                RecognizerIntent.EXTRA_MAX_RESULTS,
+                3
             )
 
             putExtra(
-                RecognizerIntent.EXTRA_MAX_RESULTS,
-                3
+                RecognizerIntent.EXTRA_PROMPT,
+                "Boliye..."
             )
         }
 
         try {
             speechLauncher.launch(intent)
         } catch (_: Exception) {
-            speakAndShow(
-                "Is phone par speech recognition available nahi hai."
+            reply(
+                "Speech recognition is phone par available nahi hai."
             )
         }
     }
 
     private fun processCommand(input: String) {
-
-        replyCallback?.invoke("You: $input")
 
         scope.launch {
 
@@ -177,35 +179,30 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             when (command.intent) {
 
                 IntentType.CALL -> {
-
                     handleCall(command.target)
                 }
 
                 IntentType.MESSAGE -> {
-
-                    speakAndShow(
-                        "Message samajh gaya. Send karne se pehle confirmation lunga."
+                    reply(
+                        "Message command samajh gaya. Bhejne se pehle confirmation lunga."
                     )
                 }
 
                 IntentType.OPEN_APP -> {
-
-                    speakAndShow(
-                        "App open karne ka request samajh gaya."
+                    reply(
+                        "App open karne ki request samajh gaya."
                     )
                 }
 
                 IntentType.LAPTOP_COMMAND -> {
-
-                    speakAndShow(
-                        "Laptop control abhi disabled hai."
+                    reply(
+                        "Laptop control is version me disabled hai."
                     )
                 }
 
                 IntentType.GENERAL -> {
-
-                    val reply = brain.think(input)
-                    speakAndShow(reply)
+                    val answer = brain.think(input)
+                    reply(answer)
                 }
             }
         }
@@ -213,58 +210,54 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private fun handleCall(target: String?) {
 
-        if (
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_CONTACTS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (target.isNullOrBlank()) {
+            reply("Kisko call karna hai?")
+            return
+        }
+
+        val permission = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.READ_CONTACTS
+        )
+
+        if (permission != PackageManager.PERMISSION_GRANTED) {
 
             contactsPermission.launch(
                 Manifest.permission.READ_CONTACTS
             )
 
-            speakAndShow(
-                "Contacts access permission chahiye, phir main contact search kar sakta hoon."
+            reply(
+                "Contacts access allow karo, phir main contact search karunga."
             )
 
-            return
-        }
-
-        if (target.isNullOrBlank()) {
-            speakAndShow(
-                "Kisko call karna hai?"
-            )
             return
         }
 
         val number = phoneActions.findContact(target)
 
-        if (number != null) {
-
-            speakAndShow(
-                "Mujhe $target ka contact mil gaya. Dialer open kar raha hoon."
-            )
-
-            phoneActions.openDialer(number)
-
-        } else {
-
-            speakAndShow(
+        if (number == null) {
+            reply(
                 "$target naam ka contact nahi mila."
             )
+            return
         }
+
+        reply(
+            "$target ka contact mil gaya. Dialer open kar raha hoon."
+        )
+
+        phoneActions.openDialer(number)
     }
 
-    private fun speakAndShow(text: String) {
+    private fun reply(text: String) {
 
-        replyCallback?.invoke("JARVIS: $text")
+        messages.add("JARVIS: $text")
 
         tts?.speak(
             text,
             TextToSpeech.QUEUE_FLUSH,
             null,
-            "jarvis_reply"
+            "jarvis_response"
         )
     }
 
@@ -280,7 +273,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 result == TextToSpeech.LANG_MISSING_DATA ||
                 result == TextToSpeech.LANG_NOT_SUPPORTED
             ) {
-                tts?.language = Locale.US
+                tts?.setLanguage(Locale.US)
             }
         }
     }
@@ -296,26 +289,11 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 }
 
-@Composable
-fun JarvisScreen(
-    onListen: () -> Unit,
-    onReply: (((String) -> Unit)) -> Unit
+@androidx.compose.runtime.Composable
+private fun JarvisScreen(
+    messages: List<String>,
+    onListen: () -> Unit
 ) {
-
-    var messages by remember {
-        mutableStateOf(
-            listOf(
-                "JARVIS: Online. Tap the microphone and speak."
-            )
-        )
-    }
-
-    LaunchedEffect(Unit) {
-
-        onReply { message ->
-            messages = messages + message
-        }
-    }
 
     MaterialTheme {
 
@@ -336,7 +314,7 @@ fun JarvisScreen(
                 )
 
                 Text(
-                    text = "Advanced Voice Assistant"
+                    text = "Phone Assistant"
                 )
 
                 Spacer(
@@ -347,7 +325,7 @@ fun JarvisScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
 
                     items(messages) { message ->
@@ -356,7 +334,7 @@ fun JarvisScreen(
                             text = message,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(8.dp)
+                                .padding(6.dp)
                         )
                     }
                 }
@@ -369,7 +347,6 @@ fun JarvisScreen(
                     onClick = onListen,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-
                     Text("🎙 TALK TO JARVIS")
                 }
             }

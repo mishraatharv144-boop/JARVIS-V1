@@ -2,16 +2,9 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- Voice -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
-    <!-- Contacts -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
-
-    <!-- Phone -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
@@ -21,7 +14,6 @@
         android:label="JARVIS V1"
         android:theme="@style/Theme.Jarvis">
 
-        <!-- Main JARVIS activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -33,7 +25,6 @@
 
         </activity>
 
-        <!-- Incoming call service -->
         <service
             android:name=".CallControlService"
             android:permission="android.permission.BIND_INCALL_SERVICE"
@@ -49,7 +40,6 @@
 
         </service>
 
-        <!-- Device administrator for supported phone-lock action -->
         <receiver
             android:name=".JarvisDeviceAdminReceiver"
             android:description="@string/device_admin_description"

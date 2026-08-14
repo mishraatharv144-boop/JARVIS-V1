@@ -6,32 +6,56 @@ import android.telecom.InCallService
 class CallControlService : InCallService() {
 
     companion object {
-        var currentCall: Call? = null
-            private set
+        private var activeCall: Call? = null
+
+        fun hasActiveCall(): Boolean {
+            return activeCall != null
+        }
+
+        fun answerCall(): Boolean {
+            val call = activeCall ?: return false
+
+            return try {
+                call.answer(0)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+        fun rejectCall(): Boolean {
+            val call = activeCall ?: return false
+
+            return try {
+                call.reject(false, null)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+        fun endCall(): Boolean {
+            val call = activeCall ?: return false
+
+            return try {
+                call.disconnect()
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
     }
 
     override fun onCallAdded(call: Call) {
         super.onCallAdded(call)
-        currentCall = call
+        activeCall = call
     }
 
     override fun onCallRemoved(call: Call) {
-        if (currentCall == call) {
-            currentCall = null
+        if (activeCall == call) {
+            activeCall = null
         }
 
         super.onCallRemoved(call)
-    }
-
-    fun answerCurrentCall() {
-        currentCall?.answer(0)
-    }
-
-    fun rejectCurrentCall() {
-        currentCall?.reject(false, null)
-    }
-
-    fun endCurrentCall() {
-        currentCall?.disconnect()
     }
 }

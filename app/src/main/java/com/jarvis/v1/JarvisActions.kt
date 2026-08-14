@@ -1,50 +1,78 @@
 package com.jarvis.v1
 
-data class JarvisCommandResult(
-    val message: String,
-    val needsConfirmation: Boolean = false
-)
+import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-class JarvisActions {
+class JarvisBrain(
+    private val context: Context
+) {
 
-    fun handle(command: JarvisCommand): JarvisCommandResult {
-        return when (command.intent) {
+    suspend fun think(input: String): String {
+        return withContext(Dispatchers.Default) {
 
-            IntentType.CALL -> {
-                if (command.target.isNullOrBlank()) {
-                    JarvisCommandResult(
-                        message = "Kisko call karna hai?"
-                    )
-                } else {
-                    JarvisCommandResult(
-                        message = "Theek hai, ${command.target} ko call karne ke liye ready hoon."
-                    )
-                }
-            }
+            val text = input.trim()
+            val lower = text.lowercase()
 
-            IntentType.MESSAGE -> {
-                JarvisCommandResult(
-                    message = "Message samajh gaya. Bhejne se pehle confirmation lunga.",
-                    needsConfirmation = true
-                )
-            }
+            when {
+                text.isBlank() ->
+                    "Mujhe kuch sunai nahi diya."
 
-            IntentType.OPEN_APP -> {
-                JarvisCommandResult(
-                    message = "App open karne ki request samajh gaya."
-                )
-            }
+                lower.contains("hello") ||
+                lower.contains("hi") ||
+                lower.contains("hey") ||
+                lower.contains("namaste") ->
+                    "Hello. Main JARVIS hoon. Batao, kya karna hai?"
 
-            IntentType.LAPTOP_COMMAND -> {
-                JarvisCommandResult(
-                    message = "Laptop control disabled hai."
-                )
-            }
+                lower.contains("kaise ho") ||
+                lower.contains("how are you") ->
+                    "Main bilkul ready hoon. Tum batao kya karna hai."
 
-            IntentType.GENERAL -> {
-                JarvisCommandResult(
-                    message = "Command ko AI brain ke through process karna hoga."
-                )
+                lower.contains("tumhara naam") ||
+                lower.contains("your name") ->
+                    "Mera naam JARVIS hai."
+
+                lower.contains("thank") ||
+                lower.contains("thanks") ||
+                lower.contains("dhanyavaad") ->
+                    "You're welcome."
+
+                lower.contains("kya kar sakte ho") ||
+                lower.contains("what can you do") ->
+                    "Main voice commands, contacts, calling aur basic phone tasks me tumhari help kar sakta hoon."
+
+                lower.contains("weather") ||
+                lower.contains("mausam") ||
+                lower.contains("baarish") ||
+                lower.contains("barish") ->
+                    "Weather ke liye mujhe live weather data source connect karna hoga. Abhi mere paas live weather access nahi hai."
+
+                lower.contains("bhopal") &&
+                (
+                    lower.contains("jana") ||
+                    lower.contains("jaana") ||
+                    lower.contains("ghoom")
+                ) ->
+                    "Bhopal travel request samajh gaya. Live weather aur route information connect hone ke baad main current conditions check karke bata sakunga."
+
+                lower.contains("lock") ||
+                lower.contains("phone lock") ||
+                lower.contains("फोन लॉक") ->
+                    "Phone lock command samajh gaya. Is feature ke liye Android ka supported device-lock permission setup karna hoga."
+
+                lower.contains("message") ||
+                lower.contains("msg") ||
+                lower.contains("मैसेज") ->
+                    "Message request samajh gaya. Message bhejne se pehle confirmation lena zaroori hoga."
+
+                lower.contains("call") ||
+                lower.contains("phone") ||
+                lower.contains("कॉल") ||
+                lower.contains("फोन") ->
+                    "Call request samajh gaya. Contact ka naam batao."
+
+                else ->
+                    "Samajh gaya: $text. Is request ke liye mujhe appropriate phone feature ya AI capability connect karni hogi."
             }
         }
     }

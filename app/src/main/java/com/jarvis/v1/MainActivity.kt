@@ -1,9 +1,13 @@
 package com.jarvis.v1
 
 import android.Manifest
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
@@ -22,11 +26,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -43,9 +44,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private lateinit var brain: JarvisBrain
     private lateinit var engine: JarvisEngine
     private lateinit var phoneActions: PhoneActions
-    private lateinit var confirmation: ConfirmationManager
+    private lateinit var deviceLockManager: DeviceLockManager
 
-    private var tts: TextToSpeech? = null
+    private lateinit var tts: TextToSpeech
 
     private val scope =
         CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -61,9 +62,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             if (granted) {
                 startListening()
             } else {
-                reply(
-                    "Microphone permission ke bina main voice command nahi sun sakta."
-                )
+                reply("Microphone permission required hai.")
             }
         }
 
@@ -72,9 +71,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             ActivityResultContracts.RequestPermission()
         ) { granted ->
             if (!granted) {
-                reply(
-                    "Contacts permission nahi mili."
-                )
+                reply("Contacts permission nahi mili.")
             }
         }
 
@@ -104,7 +101,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         brain = JarvisBrain(applicationContext)
         engine = JarvisEngine()
         phoneActions = PhoneActions(applicationContext)
-        confirmation = ConfirmationManager()
+        deviceLockManager = DeviceLockManager(applicationContext)
 
         tts = TextToSpeech(this, this)
 
@@ -164,13 +161,25 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         try {
             speechLauncher.launch(intent)
         } catch (_: Exception) {
-            reply(
-                "Speech recognition is phone par available nahi hai."
-            )
+            reply("Speech recognition available nahi hai.")
         }
     }
 
     private fun processCommand(input: String) {
+
+        val lower = input.lowercase(Locale.getDefault())
+
+        // PHONE LOCK
+        if (
+            lower.contains("phone lock") ||
+            lower.contains("lock my phone") ||
+            lower.contains("lock the phone") ||
+            lower.contains("फोन लॉक") ||
+            lower.contains("मोबाइल लॉक")
+        ) {
+            handlePhoneLock()
+            return
+        }
 
         scope.launch {
 
@@ -184,7 +193,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
                 IntentType.MESSAGE -> {
                     reply(
-                        "Message command samajh gaya. Bhejne se pehle confirmation lunga."
+                        "Message request samajh gaya. Bhejne se pehle confirmation lunga."
                     )
                 }
 
@@ -196,15 +205,53 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
                 IntentType.LAPTOP_COMMAND -> {
                     reply(
-                        "Laptop control is version me disabled hai."
+                        "Laptop control disabled hai."
                     )
                 }
 
                 IntentType.GENERAL -> {
-                    val answer = brain.think(input)
-                    reply(answer)
+                    reply(brain.think(input))
                 }
             }
+        }
+    }
+
+    private fun handlePhoneLock() {
+
+        if (deviceLockManager.isEnabled()) {
+
+            reply("Phone lock kar raha hoon.")
+
+            deviceLockManager.lockPhone()
+
+        } else {
+
+            reply(
+                "Phone lock permission abhi enabled nahi hai. " +
+                "Main Android ka Device Administrator setup khol raha hoon."
+            )
+
+            val component = ComponentName(
+                this,
+                JarvisDeviceAdminReceiver::class.java
+            )
+
+            val intent = Intent(
+                DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN
+            ).apply {
+
+                putExtra(
+                    DevicePolicyManager.EXTRA_DEVICE_ADMIN,
+                    component
+                )
+
+                putExtra(
+                    DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                    "JARVIS ko voice se supported phone-lock action perform karne ke liye access chahiye."
+                )
+            }
+
+            startActivity(intent)
         }
     }
 
@@ -227,7 +274,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             )
 
             reply(
-                "Contacts access allow karo, phir main contact search karunga."
+                "Contacts permission allow karo, phir main contact search karunga."
             )
 
             return
@@ -236,9 +283,11 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         val number = phoneActions.findContact(target)
 
         if (number == null) {
+
             reply(
                 "$target naam ka contact nahi mila."
             )
+
             return
         }
 
@@ -253,19 +302,21 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         messages.add("JARVIS: $text")
 
-        tts?.speak(
-            text,
-            TextToSpeech.QUEUE_FLUSH,
-            null,
-            "jarvis_response"
-        )
+        if (::tts.isInitialized) {
+            tts.speak(
+                text,
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "jarvis_response"
+            )
+        }
     }
 
     override fun onInit(status: Int) {
 
         if (status == TextToSpeech.SUCCESS) {
 
-            val result = tts?.setLanguage(
+            val result = tts.setLanguage(
                 Locale("hi", "IN")
             )
 
@@ -273,7 +324,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 result == TextToSpeech.LANG_MISSING_DATA ||
                 result == TextToSpeech.LANG_NOT_SUPPORTED
             ) {
-                tts?.setLanguage(Locale.US)
+                tts.language = Locale.US
             }
         }
     }
@@ -282,14 +333,16 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         scope.cancel()
 
-        tts?.stop()
-        tts?.shutdown()
+        if (::tts.isInitialized) {
+            tts.stop()
+            tts.shutdown()
+        }
 
         super.onDestroy()
     }
 }
 
-@androidx.compose.runtime.Composable
+@Composable
 private fun JarvisScreen(
     messages: List<String>,
     onListen: () -> Unit
